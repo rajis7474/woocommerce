@@ -1,6 +1,7 @@
 const { test, expect } = require( '@playwright/test' );
 const wcApi = require( '@woocommerce/woocommerce-rest-api' ).default;
 
+// Products and tax rates
 const simpleProductName = 'Add new order simple product';
 const variableProductName = 'Add new order variable product';
 const externalProductName = 'Add new order external product';
