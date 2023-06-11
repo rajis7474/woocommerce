@@ -32,7 +32,7 @@ test.describe( 'Add New Coupon Page', () => {
 			await page.goto( 'wp-admin/post-new.php?post_type=shop_coupon' );
 		} );
 
-		await test.step( `Fill coupon code with value ${ couponCode }`, async () => {
+		await test.step( `Fill coupon code with value "${ couponCode }"`, async () => {
 			await page.locator( '#title' ).fill( couponCode );
 
 			await test.step( `Blur then wait for the auto-save to finish.`, async () => {
