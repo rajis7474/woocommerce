@@ -6,12 +6,16 @@ test.describe( 'Marketing page', () => {
 	test( 'A user can view the Marketing > Overview page without it crashing', async ( {
 		page,
 	} ) => {
-		// Go to the Marketing page.
-		await page.goto( 'wp-admin/admin.php?page=wc-admin&path=%2Fmarketing' );
+		await test.step( `Go to the Marketing page.`, async () => {
+			await page.goto(
+				'wp-admin/admin.php?page=wc-admin&path=%2Fmarketing'
+			);
+		} );
 
-		// Users should see the "Learn about marketing a store" card.
-		await expect(
-			page.locator( '"Learn about marketing a store"' )
-		).toBeVisible();
+		await test.step( `Users should see the "Learn about marketing a store" card.`, async () => {
+			await expect(
+				page.locator( '"Learn about marketing a store"' )
+			).toBeVisible();
+		} );
 	} );
 } );
