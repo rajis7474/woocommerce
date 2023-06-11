@@ -6,15 +6,21 @@ test.describe(
 		test.use( { storageState: process.env.ADMINSTATE } );
 
 		test( 'can make sure WooCommerce is activated.', async ( { page } ) => {
-			await page.goto( '/wp-admin/plugins.php' );
-			// Expect the woo plugin to be displayed -- if there's an update available, it has the same data-slug attribute
-			await expect(
-				page.locator( "//tr[@data-slug='woocommerce'][1]" )
-			).toBeVisible();
-			// Expect it to have an active class
-			await expect(
-				page.locator( "//tr[@data-slug='woocommerce'][1]" )
-			).toHaveClass( /active/ );
+			await test.step( `Go to Plugins > Installed plugins`, async () => {
+				await page.goto( '/wp-admin/plugins.php' );
+			} );
+
+			await test.step( `Expect the woo plugin to be displayed -- if there's an update available, it has the same data-slug attribute`, async () => {
+				await expect(
+					page.locator( "//tr[@data-slug='woocommerce'][1]" )
+				).toBeVisible();
+			} );
+
+			await test.step( `Expect it to have an active class`, async () => {
+				await expect(
+					page.locator( "//tr[@data-slug='woocommerce'][1]" )
+				).toHaveClass( /active/ );
+			} );
 		} );
 	}
 );
