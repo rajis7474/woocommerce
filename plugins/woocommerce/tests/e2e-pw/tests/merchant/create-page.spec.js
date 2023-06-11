@@ -17,57 +17,79 @@ test.describe( 'Can create a new page', () => {
 			},
 		} );
 
-		let response = await wpApi.get( `pages` );
-		const allPages = await response.json();
+		let response = await test.step( `Get all pages`, async () => {
+			return await wpApi.get( `pages` );
+		} );
 
-		await allPages.forEach( async ( page ) => {
-			if ( page.title.rendered === pageTitle ) {
-				response = await wpApi.delete( `pages/${ page.id }`, {
-					data: {
-						force: true,
-					},
-				} );
-			}
+		await test.step( `Delete pages with title "${ pageTitle }".`, async () => {
+			const allPages = await response.json();
+
+			await allPages.forEach( async ( page ) => {
+				if ( page.title.rendered === pageTitle ) {
+					response = await wpApi.delete( `pages/${ page.id }`, {
+						data: {
+							force: true,
+						},
+					} );
+				}
+			} );
 		} );
 	} );
 
 	test( 'can create new page', async ( { page } ) => {
-		await page.goto( 'wp-admin/post-new.php?post_type=page' );
+		await test.step( `Go to Pages > Add new.`, async () => {
+			await page.goto( 'wp-admin/post-new.php?post_type=page' );
+		} );
 
-		const welcomeModalVisible = await page
-			.getByRole( 'heading', {
-				name: 'Welcome to the block editor',
-			} )
-			.isVisible();
+		await test.step( `Close welcome modal if visible.`, async () => {
+			const welcomeModalVisible = await page
+				.getByRole( 'heading', {
+					name: 'Welcome to the block editor',
+				} )
+				.isVisible();
 
-		if ( welcomeModalVisible ) {
-			await page.getByRole( 'button', { name: 'Close' } ).click();
-		}
+			if ( welcomeModalVisible ) {
+				await page.getByRole( 'button', { name: 'Close' } ).click();
+			}
+		} );
 
-		await page
-			.getByRole( 'textbox', { name: 'Add Title' } )
-			.fill( pageTitle );
+		await test.step( `Fill page title.`, async () => {
+			await page
+				.getByRole( 'textbox', { name: 'Add Title' } )
+				.fill( pageTitle );
+		} );
 
-		await page.getByRole( 'button', { name: 'Add default block' } ).click();
+		await test.step( `Add an empty block.`, async () => {
+			await page
+				.getByRole( 'button', { name: 'Add default block' } )
+				.click();
+		} );
 
-		await page
-			.getByRole( 'document', {
-				name:
-					'Empty block; start writing or type forward slash to choose a block',
-			} )
-			.fill( 'Test Page' );
+		await test.step( `Fill block contents`, async () => {
+			await page
+				.getByRole( 'document', {
+					name: 'Empty block; start writing or type forward slash to choose a block',
+				} )
+				.fill( 'Test Page' );
+		} );
 
-		await page
-			.getByRole( 'button', { name: 'Publish', exact: true } )
-			.click();
+		await test.step( `Click 'Publish' from the header.`, async () => {
+			await page
+				.getByRole( 'button', { name: 'Publish', exact: true } )
+				.click();
+		} );
 
-		await page
-			.getByRole( 'region', { name: 'Editor publish' } )
-			.getByRole( 'button', { name: 'Publish', exact: true } )
-			.click();
+		await test.step( `Click 'Publish' from the sliding panel.`, async () => {
+			await page
+				.getByRole( 'region', { name: 'Editor publish' } )
+				.getByRole( 'button', { name: 'Publish', exact: true } )
+				.click();
+		} );
 
-		await expect(
-			page.getByText( `${ pageTitle } is now live.` )
-		).toBeVisible();
+		await test.step( `Expect the success message "${ pageTitle } is now live." to appear.`, async () => {
+			await expect(
+				page.getByText( `${ pageTitle } is now live.` )
+			).toBeVisible();
+		} );
 	} );
 } );
