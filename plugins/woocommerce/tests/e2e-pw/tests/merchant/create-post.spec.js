@@ -26,7 +26,7 @@ test.describe( 'Can create a new post', () => {
 		await test.step( `Clean up posts with title "${ postTitle }".`, async () => {
 			await allPosts.forEach( async ( post ) => {
 				if ( post.title.rendered === postTitle ) {
-					response = await wpApi.delete( `posts/${ post.id }`, {
+					await wpApi.delete( `posts/${ post.id }`, {
 						data: {
 							force: true,
 						},
