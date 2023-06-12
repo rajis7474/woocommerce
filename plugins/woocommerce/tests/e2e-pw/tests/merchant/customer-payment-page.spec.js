@@ -64,9 +64,7 @@ test.describe( 'WooCommerce Merchant Flow: Orders > Customer Payment Page', () =
 		} );
 	} );
 
-	test( 'should show the customer payment page link on a pending order', async ( {
-		page,
-	} ) => {
+	test( 'can pay order for customer', async ( { page } ) => {
 		await test.step( `Go to "Edit order" page of order ID ${ orderId }.`, async () => {
 			await page.goto(
 				`wp-admin/post.php?post=${ orderId }&action=edit`
