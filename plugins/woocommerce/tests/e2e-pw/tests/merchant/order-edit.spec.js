@@ -14,13 +14,16 @@ test.describe( 'Edit order', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api
-			.post( 'orders', {
-				status: 'processing',
-			} )
-			.then( ( response ) => {
-				orderId = response.data.id;
-			} );
+
+		await test.step( `Create test order`, async () => {
+			await api
+				.post( 'orders', {
+					status: 'processing',
+				} )
+				.then( ( response ) => {
+					orderId = response.data.id;
+				} );
+		} );
 	} );
 
 	test.afterAll( async ( { baseURL } ) => {
@@ -30,61 +33,86 @@ test.describe( 'Edit order', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api.delete( `orders/${ orderId }`, { force: true } );
+
+		await test.step( `Delete test order.`, async () => {
+			await api.delete( `orders/${ orderId }`, { force: true } );
+		} );
 	} );
 
 	test( 'can view single order', async ( { page } ) => {
-		// go to orders page
-		await page.goto( 'wp-admin/edit.php?post_type=shop_order' );
+		await test.step( `Go to orders page`, async () => {
+			await page.goto( 'wp-admin/edit.php?post_type=shop_order' );
+		} );
 
-		// confirm we're on the orders page
-		await expect( page.locator( 'h1.components-text' ) ).toContainText(
-			'Orders'
-		);
+		await test.step( `Confirm we're on the orders page`, async () => {
+			await expect( page.locator( 'h1.components-text' ) ).toContainText(
+				'Orders'
+			);
+		} );
 
-		// open order we created
-		await page.goto( `wp-admin/post.php?post=${ orderId }&action=edit` );
+		await test.step( `Open order we created`, async () => {
+			await page.goto(
+				`wp-admin/post.php?post=${ orderId }&action=edit`
+			);
+		} );
 
-		// make sure we're on the order details page
-		await expect( page.locator( 'h1.wp-heading-inline' ) ).toContainText(
-			/Edit [oO]rder/
-		);
+		await test.step( `Make sure we're on the order details page`, async () => {
+			await expect(
+				page.locator( 'h1.wp-heading-inline' )
+			).toContainText( /Edit [oO]rder/ );
+		} );
 	} );
 
 	test( 'can update order status', async ( { page } ) => {
-		// open order we created
-		await page.goto( `wp-admin/post.php?post=${ orderId }&action=edit` );
+		await test.step( `Open order we created`, async () => {
+			await page.goto(
+				`wp-admin/post.php?post=${ orderId }&action=edit`
+			);
+		} );
 
-		// update order status to Completed
-		await page.locator( '#order_status' ).selectOption( 'wc-completed' );
-		await page.locator( 'button.save_order' ).click();
+		await test.step( `Update order status to Completed`, async () => {
+			await page
+				.locator( '#order_status' )
+				.selectOption( 'wc-completed' );
+			await page.locator( 'button.save_order' ).click();
+		} );
 
-		// verify order status changed and note added
-		await expect( page.locator( '#order_status' ) ).toHaveValue(
-			'wc-completed'
-		);
-		await expect(
-			page.locator( '#woocommerce-order-notes .note_content >> nth=0' )
-		).toContainText( 'Order status changed from Processing to Completed.' );
+		await test.step( `Verify order status changed and note added`, async () => {
+			await expect( page.locator( '#order_status' ) ).toHaveValue(
+				'wc-completed'
+			);
+			await expect(
+				page.locator(
+					'#woocommerce-order-notes .note_content >> nth=0'
+				)
+			).toContainText(
+				'Order status changed from Processing to Completed.'
+			);
+		} );
 	} );
 
 	test( 'can update order details', async ( { page } ) => {
-		// open order we created
-		await page.goto( `wp-admin/post.php?post=${ orderId }&action=edit` );
+		await test.step( `Open order we created`, async () => {
+			await page.goto(
+				`wp-admin/post.php?post=${ orderId }&action=edit`
+			);
+		} );
 
-		// update order date
-		await page.locator( 'input[name=order_date]' ).fill( '2018-12-14' );
-		await page.locator( 'button.save_order' ).click();
+		await test.step( `Update order date`, async () => {
+			await page.locator( 'input[name=order_date]' ).fill( '2018-12-14' );
+			await page.locator( 'button.save_order' ).click();
+		} );
 
-		// verify changes
-		await expect(
-			page
-				.locator( 'div.notice-success > p' )
-				.filter( { hasText: 'Order updated.' } )
-		).toBeVisible();
-		await expect( page.locator( 'input[name=order_date]' ) ).toHaveValue(
-			'2018-12-14'
-		);
+		await test.step( `Verify changes`, async () => {
+			await expect(
+				page
+					.locator( 'div.notice-success > p' )
+					.filter( { hasText: 'Order updated.' } )
+			).toBeVisible();
+			await expect(
+				page.locator( 'input[name=order_date]' )
+			).toHaveValue( '2018-12-14' );
+		} );
 	} );
 } );
 
@@ -138,65 +166,73 @@ test.describe( 'Edit order > Downloadable product permissions', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api
-			.post( 'products', {
-				name: productName,
-				downloadable: true,
-				download_limit: -1,
-				downloads: [
-					{
-						id: uuid.v4(),
-						name: 'Single',
-						file:
-							'https://demo.woothemes.com/woocommerce/wp-content/uploads/sites/56/2017/08/single.jpg',
-					},
-				],
-			} )
-			.then( ( response ) => {
-				productId = response.data.id;
-			} );
 
-		await enableGrantAccessAfterPaymentSetting( api );
+		await test.step( `Create test product 1.`, async () => {
+			await api
+				.post( 'products', {
+					name: productName,
+					downloadable: true,
+					download_limit: -1,
+					downloads: [
+						{
+							id: uuid.v4(),
+							name: 'Single',
+							file: 'https://demo.woothemes.com/woocommerce/wp-content/uploads/sites/56/2017/08/single.jpg',
+						},
+					],
+				} )
+				.then( ( response ) => {
+					productId = response.data.id;
+				} );
+		} );
 
-		await api
-			.post( 'products', {
-				name: product2Name,
-				downloadable: true,
-				download_limit: -1,
-				downloads: [
-					{
-						id: uuid.v4(),
-						name: 'Single',
-						file:
-							'https://demo.woothemes.com/woocommerce/wp-content/uploads/sites/56/2017/08/single.jpg',
-					},
-				],
-			} )
-			.then( ( response ) => {
-				product2Id = response.data.id;
-			} );
-		await api
-			.post( 'orders', {
-				status: 'processing',
-				line_items: [
-					{
-						product_id: productId,
-						quantity: 1,
-					},
-				],
-				billing: customerBilling,
-			} )
-			.then( ( response ) => {
-				orderId = response.data.id;
-			} );
-		await api
-			.post( 'orders', {
-				status: 'processing',
-				billing: customerBilling,
-			} )
-			.then( ( response ) => {
-				noProductOrderId = response.data.id;
-			} );
+		await test.step( `Enable "Grant access after payment" setting.`, async () => {
+			await enableGrantAccessAfterPaymentSetting( api );
+		} );
+
+		await test.step( `Create test product 2.`, async () => {
+			await api
+				.post( 'products', {
+					name: product2Name,
+					downloadable: true,
+					download_limit: -1,
+					downloads: [
+						{
+							id: uuid.v4(),
+							name: 'Single',
+							file: 'https://demo.woothemes.com/woocommerce/wp-content/uploads/sites/56/2017/08/single.jpg',
+						},
+					],
+				} )
+				.then( ( response ) => {
+					product2Id = response.data.id;
+				} );
+		} );
+
+		await test.step( `Create test order.`, async () => {
+			await api
+				.post( 'orders', {
+					status: 'processing',
+					line_items: [
+						{
+							product_id: productId,
+							quantity: 1,
+						},
+					],
+					billing: customerBilling,
+				} )
+				.then( ( response ) => {
+					orderId = response.data.id;
+				} );
+			await api
+				.post( 'orders', {
+					status: 'processing',
+					billing: customerBilling,
+				} )
+				.then( ( response ) => {
+					noProductOrderId = response.data.id;
+				} );
+		} );
 	} );
 
 	test.afterEach( async ( { baseURL } ) => {
@@ -206,10 +242,17 @@ test.describe( 'Edit order > Downloadable product permissions', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api.delete( `products/${ productId }`, { force: true } );
-		await api.delete( `products/${ product2Id }`, { force: true } );
-		await api.delete( `orders/${ orderId }`, { force: true } );
-		await api.delete( `orders/${ noProductOrderId }`, { force: true } );
+
+		await test.step( `Clean up test products and orders.`, async () => {
+			await api.post( `products/batch`, {
+				delete: [ productId, product2Id ],
+			} );
+			await api.delete( `orders/batch`, {
+				delete: [ orderId, noProductOrderId ],
+			} );
+		} );
+
+		step
 		await revertGrantAccessAfterPaymentSetting( api );
 	} );
 
