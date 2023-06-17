@@ -1,12 +1,14 @@
-const { test, expect } = require( '@playwright/test' );
+const { test, expect, Page } = require( '@playwright/test' );
+const { async } = require( 'regenerator-runtime' );
 const wcApi = require( '@woocommerce/woocommerce-rest-api' ).default;
 
-const searchString = 'James Doe';
+const randomNum = Date.now().toString();
+const searchString = `James Doe ${ randomNum }`;
 const itemName = 'Wanted Product';
 
 const customerBilling = {
 	first_name: 'James',
-	last_name: 'Doe',
+	last_name: `Doe ${ randomNum }`,
 	company: 'Automattic',
 	country: 'US',
 	address_1: 'address1',
@@ -15,8 +17,9 @@ const customerBilling = {
 	state: 'CA',
 	postcode: '94107',
 	phone: '123456789',
-	email: 'john.doe.ordersearch@example.com',
+	email: `john.doe.ordersearch.${ randomNum }@example.com`,
 };
+
 const customerShipping = {
 	first_name: 'Tim',
 	last_name: 'Clark',
@@ -51,28 +54,42 @@ const queries = [
 ];
 
 /**
- * Check first if customer already exists. Delete if it does.
+ * @param {Page} page
  */
-const deleteCustomer = async ( api ) => {
-	const { data: customersList } = await api.get( 'customers', {
-		email: customerBilling.email,
+const goToOrdersPage = async ( page ) => {
+	await test.step( `Go to WooCommerce > Orders`, async () => {
+		await page.goto( 'wp-admin/edit.php?post_type=shop_order' );
+	} );
+};
+
+/**
+ * @param {Page} page
+ */
+const initiateSearch = async ( page, searchTerm ) => {
+	await test.step( `Enter search term "${ searchTerm }".`, async () => {
+		await page.locator( '[type=search][name=s]' ).fill( searchTerm );
 	} );
 
-	if ( customersList && customersList.length ) {
-		const customerId = customersList[ 0 ].id;
-
-		console.log(
-			`Customer with email ${ customerBilling.email } exists! Deleting it before starting test...`
-		);
-
-		await api.delete( `customers/${ customerId }`, { force: true } );
-	}
+	await test.step( `Click 'Search orders'.`, async () => {
+		await page.locator( '#search-submit' ).click();
+	} );
 };
+
+/**
+ * @param {Page} page
+ */
+const verifyResults = async ( page ) => {
+	await test.step( `Expect search results to show the order.`, async () => {
+		await expect(
+			page.getByText( `#${ orderId } ${ searchString }` )
+		).toBeVisible();
+	} );
+};
+
+let productId, customerId, orderId;
 
 test.describe( 'WooCommerce Orders > Search orders', () => {
 	test.use( { storageState: process.env.ADMINSTATE } );
-
-	let productId, customerId, orderId;
 
 	test.beforeAll( async ( { baseURL } ) => {
 		const api = new wcApi( {
@@ -81,49 +98,51 @@ test.describe( 'WooCommerce Orders > Search orders', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		// create a simple product
-		await api
-			.post( 'products', {
-				name: 'Wanted Product',
-				type: 'simple',
-				regular_price: '7.99',
-			} )
-			.then( ( response ) => {
-				productId = response.data.id;
-			} );
 
-		await deleteCustomer( api );
+		await test.step( `Create a simple product`, async () => {
+			await api
+				.post( 'products', {
+					name: 'Wanted Product',
+					type: 'simple',
+					regular_price: '7.99',
+				} )
+				.then( ( response ) => {
+					productId = response.data.id;
+				} );
+		} );
 
-		// Create test customer.
-		await api
-			.post( 'customers', {
-				email: customerBilling.email,
-				first_name: customerBilling.first_name,
-				last_name: customerBilling.last_name,
-				username: 'john.doe.ordersearch',
-				billing: customerBilling,
-				shipping: customerShipping,
-			} )
-			.then( ( response ) => {
-				customerId = response.data.id;
-			} );
+		await test.step( `Create test customer.`, async () => {
+			await api
+				.post( 'customers', {
+					email: customerBilling.email,
+					first_name: customerBilling.first_name,
+					last_name: customerBilling.last_name,
+					username: `john.doe.${ randomNum }`,
+					billing: customerBilling,
+					shipping: customerShipping,
+				} )
+				.then( ( response ) => {
+					customerId = response.data.id;
+				} );
+		} );
 
-		// create order
-		await api
-			.post( 'orders', {
-				line_items: [
-					{
-						product_id: productId,
-						quantity: 1,
-					},
-				],
-				customer_id: customerId,
-				billing: customerBilling,
-				shipping: customerShipping,
-			} )
-			.then( ( response ) => {
-				orderId = response.data.id;
-			} );
+		await test.step( `Create order`, async () => {
+			await api
+				.post( 'orders', {
+					line_items: [
+						{
+							product_id: productId,
+							quantity: 1,
+						},
+					],
+					customer_id: customerId,
+					billing: customerBilling,
+					shipping: customerShipping,
+				} )
+				.then( ( response ) => {
+					orderId = response.data.id;
+				} );
+		} );
 	} );
 
 	test.afterAll( async ( { baseURL } ) => {
@@ -133,38 +152,34 @@ test.describe( 'WooCommerce Orders > Search orders', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api.delete( `products/${ productId }`, { force: true } );
-		await api.delete( `orders/${ orderId }`, { force: true } );
-		await api.delete( `customers/${ customerId }`, { force: true } );
+		await test.step( `Delete test product`, async () => {
+			await api.delete( `products/${ productId }`, { force: true } );
+		} );
+
+		await test.step( `Delete test order`, async () => {
+			await api.delete( `orders/${ orderId }`, { force: true } );
+		} );
+
+		await test.step( `Delete test customer`, async () => {
+			await api.delete( `customers/${ customerId }`, { force: true } );
+		} );
 	} );
 
 	test( 'can search for order by order id', async ( { page } ) => {
-		await page.goto( 'wp-admin/edit.php?post_type=shop_order' );
-		await page
-			.locator( '[type=search][name=s]' )
-			.fill( orderId.toString() );
-		await page.locator( '#search-submit' ).click();
+		await goToOrdersPage( page );
 
-		await expect(
-			page.locator( '.order_number > a.order-view' )
-		).toContainText( `#${ orderId } ${ searchString }` );
+		await initiateSearch( page, orderId.toString() );
+
+		await verifyResults( page );
 	} );
 
-	for ( let i = 0; i < queries.length; i++ ) {
-		test( `can search for order containing "${ queries[ i ][ 0 ] }" as the ${ queries[ i ][ 1 ] }`, async ( {
-			page,
-		} ) => {
-			await page.goto( 'wp-admin/edit.php?post_type=shop_order' );
-			await page
-				.locator( '[type=search][name=s]' )
-				.fill( queries[ i ][ 0 ] );
-			await page.locator( '#search-submit' ).click();
+	for ( const [ searchTerm, criteria ] of queries ) {
+		test( `can search for order by ${ criteria }`, async ( { page } ) => {
+			await goToOrdersPage( page );
 
-			await expect(
-				page.locator( '.order_number > a.order-view', {
-					hasText: `#${ orderId } ${ searchString }`,
-				} )
-			).toBeVisible();
+			await initiateSearch( page, searchTerm );
+
+			await verifyResults( page );
 		} );
 	}
 } );
