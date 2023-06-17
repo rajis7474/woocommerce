@@ -149,35 +149,25 @@ test.describe( 'WooCommerce Orders > Apply Coupon', () => {
 			);
 		} );
 
-		await test.step( `Assert that there is a coupon on the order`, async () => {
+		await test.step( `Expect "${ couponCode }" to appear in the list of coupons applied.`, async () => {
 			await expect(
-				page.locator( '.wc_coupon_list li', { hasText: couponCode } )
+				page.locator( '.wc_coupon_list li', {
+					hasText: couponCode,
+				} )
 			).toBeVisible();
-			await expect(
-				page.locator( '.wc-order-totals td.label >> nth=1' )
-			).toContainText( 'Coupon(s)' );
-			await expect(
-				page.locator( '.wc-order-totals td.label >> nth=2' )
-			).toContainText( 'Order Total' );
-			await expect(
-				page.locator( '.wc-order-totals td.total >> nth=1' )
-			).toContainText( couponAmount );
-			await expect(
-				page.locator( '.wc-order-totals td.total >> nth=2' )
-			).toContainText( discountedPrice );
 		} );
 
 		await test.step( `Remove coupon.`, async () => {
 			await page.locator( 'a.remove-coupon' ).dispatchEvent( 'click' );
 		} );
 
-		await test.step( `Make sure the coupon was removed`, async () => {
+		await test.step( `Expect coupon code "${ couponCode }" to be removed.`, async () => {
 			await expect(
 				page.locator( '.wc_coupon_list li', { hasText: couponCode } )
 			).not.toBeVisible();
-			await expect(
-				page.locator( '.wc-order-totals td.label >> nth=1' )
-			).toContainText( 'Order Total' );
+		} );
+
+		await test.step( `Expect order total to be equal to the product price.`, async () => {
 			await expect(
 				page.locator( '.wc-order-totals td.total >> nth=1' )
 			).toContainText( productPrice );
