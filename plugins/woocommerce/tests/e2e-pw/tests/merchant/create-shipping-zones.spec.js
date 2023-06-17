@@ -114,7 +114,7 @@ test.describe( 'WooCommerce Shipping Settings - Add new shipping zone', () => {
 		} );
 
 		await test.step( `Click 'Save changes' button.`, async () => {
-			await page.click( '#submit' );
+			await page.locator( '#submit' ).click();
 			await page.waitForFunction( () => {
 				const button = document.querySelector( '#submit' );
 				return button && button.disabled;
@@ -200,7 +200,7 @@ test.describe( 'WooCommerce Shipping Settings - Add new shipping zone', () => {
 		} );
 
 		await test.step( `Click 'Save changes'.`, async () => {
-			await page.click( '#submit' );
+			await page.locator( '#submit' ).click();
 			await page.waitForFunction( () => {
 				const button = document.querySelector( '#submit' );
 				return button && button.disabled;

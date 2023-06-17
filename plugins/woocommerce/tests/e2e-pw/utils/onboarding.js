@@ -55,12 +55,17 @@ const onboarding = {
 		} );
 
 		await test.step( "In the usage tracking dialog, select 'No thanks'", async () => {
-			await page.textContent( '.components-modal__header-heading' );
 			await page.locator( 'button >> text=No thanks' ).click();
 			await page.waitForLoadState( 'networkidle' ); // not autowaiting for form submission
 		} );
 	},
 
+	/**
+	 *
+	 * @param {import('@playwright/test').Page} page
+	 * @param {*} industries
+	 * @param {*} expectedNumberOfIndustries
+	 */
 	completeIndustrySection: async (
 		page,
 		industries,
@@ -71,13 +76,11 @@ const onboarding = {
 		} );
 
 		await test.step( `Expect heading to contain 'In which industry does the store operate?'`, async () => {
-			const pageHeading = await page.textContent(
-				'div.woocommerce-profile-wizard__step-header > h2'
-			);
-
-			expect( pageHeading ).toContain(
+			const pageHeading = page.getByText(
 				'In which industry does the store operate?'
 			);
+
+			await expect( pageHeading ).toBeVisible();
 		} );
 
 		await test.step( `Check that there are the correct number of options listed`, async () => {
@@ -101,30 +104,46 @@ const onboarding = {
 		} );
 	},
 
+	/**
+	 * @param {import('@playwright/test').Page} page
+	 * @param {{saveChanges: boolean}} options
+	 */
 	handleSaveChangesModal: async ( page, { saveChanges } ) => {
 		// Save changes? Modal
-		await page.textContent( '.components-modal__header-heading' );
+		const saveChangesModalShown = await page
+			.locator( '.components-modal__header-heading' )
+			.isVisible();
 
-		if ( saveChanges ) {
-			await page.locator( 'button >> text=Save' ).click();
-		} else {
-			await page.locator( 'button >> text=Discard' ).click();
+		if ( saveChangesModalShown ) {
+			const saveOrDiscardButton = saveChanges
+				? page.getByRole( 'button', { name: 'Save' } )
+				: page.getByRole( 'button', { name: 'Discard' } );
+
+			await saveOrDiscardButton.click();
 		}
+
 		await page.waitForLoadState( 'networkidle' );
 	},
 
+	/**
+	 *
+	 * @param {import('@playwright/test').Page} page
+	 * @param {*} products
+	 */
 	completeProductTypesSection: async ( page, products ) => {
 		// There are 7 checkboxes on the page, adjust this constant if we change that
 		const expectedProductTypes = 7;
 
 		await test.step( `Go to ${ PRODUCT_TYPES_URL }`, async () => {
 			await page.goto( PRODUCT_TYPES_URL );
-			const pageHeading = await page.textContent(
-				'div.woocommerce-profile-wizard__step-header > h2'
-			);
-			expect( pageHeading ).toContain(
+		} );
+
+		await test.step( `Expect page heading to be correct`, async () => {
+			const pageHeading = page.getByText(
 				'What type of products will be listed?'
 			);
+
+			await expect( pageHeading ).toBeVisible();
 		} );
 
 		await test.step( `Check that there are the correct number of options listed`, async () => {
@@ -152,16 +171,18 @@ const onboarding = {
 		} );
 	},
 
+	/**
+	 *
+	 * @param {import('@playwright/test').Page} page
+	 */
 	completeBusinessDetailsSection: async ( page ) => {
 		await test.step( `Go to ${ BUSINESS_DETAILS_URL }`, async () => {
 			await page.goto( BUSINESS_DETAILS_URL );
 		} );
 
 		await test.step( `Expect page heading to be correct`, async () => {
-			const pageHeading = await page.textContent(
-				'div.woocommerce-profile-wizard__step-header > h2'
-			);
-			expect( pageHeading ).toContain( 'Tell us about your business' );
+			const pageHeading = page.getByText( 'Tell us about your business' );
+			await expect( pageHeading ).toBeVisible();
 		} );
 
 		await test.step( `Select 1 - 10 for products`, async () => {
@@ -203,10 +224,8 @@ const onboarding = {
 		} );
 
 		await test.step( `Expect the page heading to be correct`, async () => {
-			const pageHeading = await page.textContent(
-				'div.woocommerce-profile-wizard__step-header > h2'
-			);
-			expect( pageHeading ).toContain( 'Included business features' );
+			const pageHeading = page.getByText( 'Included business features' );
+			await expect( pageHeading ).toBeVisible();
 		} );
 
 		await test.step( `Expand list of features`, async () => {

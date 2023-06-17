@@ -63,7 +63,6 @@ test.describe( 'Store owner can complete onboarding wizard', () => {
 
 		await test.step( `Navigate back to "Industry" section`, async () => {
 			await page.locator( 'button >> text=Industry' ).click();
-			await page.textContent( '.components-checkbox-control__input' );
 			for ( let industry of Object.values(
 				storeDetails.us.industries2
 			) ) {
@@ -93,7 +92,6 @@ test.describe( 'Store owner can complete onboarding wizard', () => {
 
 		await test.step( `Navigate back to "Industry" section`, async () => {
 			await page.locator( 'button >> text=Industry' ).click();
-			await page.textContent( '.components-checkbox-control__input' );
 			for ( let industry of Object.values(
 				storeDetails.us.industries2
 			) ) {
