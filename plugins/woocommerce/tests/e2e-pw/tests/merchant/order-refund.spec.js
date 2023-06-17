@@ -13,30 +13,33 @@ test.describe.serial( 'WooCommerce Orders > Refund an order', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		// create a simple product
-		await api
-			.post( 'products', {
-				name: 'Simple Refund Product',
-				type: 'simple',
-				regular_price: '9.99',
-			} )
-			.then( ( response ) => {
-				productId = response.data.id;
-			} );
-		// create order
-		await api
-			.post( 'orders', {
-				line_items: [
-					{
-						product_id: productId,
-						quantity: 1,
-					},
-				],
-				status: 'completed',
-			} )
-			.then( ( response ) => {
-				orderId = response.data.id;
-			} );
+		await test.step( `Create a simple product`, async () => {
+			await api
+				.post( 'products', {
+					name: 'Simple Refund Product',
+					type: 'simple',
+					regular_price: '9.99',
+				} )
+				.then( ( response ) => {
+					productId = response.data.id;
+				} );
+		} );
+
+		await test.step( `Create order`, async () => {
+			await api
+				.post( 'orders', {
+					line_items: [
+						{
+							product_id: productId,
+							quantity: 1,
+						},
+					],
+					status: 'completed',
+				} )
+				.then( ( response ) => {
+					orderId = response.data.id;
+				} );
+		} );
 	} );
 
 	test.afterAll( async ( { baseURL } ) => {
@@ -46,12 +49,22 @@ test.describe.serial( 'WooCommerce Orders > Refund an order', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api.delete( `products/${ productId }`, { force: true } );
-		await api.delete( `orders/${ orderId }`, { force: true } );
+
+		await test.step( `Delete test product`, async () => {
+			await api.delete( `products/${ productId }`, { force: true } );
+		} );
+
+		await test.step( `Delete test order.`, async () => {
+			await api.delete( `orders/${ orderId }`, { force: true } );
+		} );
 	} );
 
 	test( 'can issue a refund by quantity', async ( { page } ) => {
-		await page.goto( `wp-admin/post.php?post=${ orderId }&action=edit` );
+		await test.step( `Open the test order.`, async () => {
+			await page.goto(
+				`wp-admin/post.php?post=${ orderId }&action=edit`
+			);
+		} );
 
 		// get currency symbol
 		currencySymbol = await page.textContent(
