@@ -1,4 +1,4 @@
-const { test, expect } = require( '@playwright/test' );
+const { test, expect, Page } = require( '@playwright/test' );
 const wcApi = require( '@woocommerce/woocommerce-rest-api' ).default;
 
 const firstProductName = 'First Product';
@@ -16,6 +16,22 @@ const shippingCountryDE = 'DE';
 const shippingZoneNameFR = 'France Flat Local';
 const shippingCountryFR = 'FR';
 
+/**
+ * Shared steps.
+ */
+const steps = {
+	/**
+	 *
+	 * @param {Page} page
+	 */
+	gotoCart: async ( page ) => {
+		await test.step( `Go to cart.`, async () => {
+			await page.goto( '/cart/' );
+		} );
+	},
+	
+};
+
 test.describe( 'Cart Calculate Shipping', () => {
 	let firstProductId, secondProductId, shippingZoneDEId, shippingZoneFRId;
 
@@ -26,81 +42,98 @@ test.describe( 'Cart Calculate Shipping', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		// make sure the currency is USD
-		await api.put( 'settings/general/woocommerce_currency', {
-			value: 'USD',
+		await test.step( `Make sure the currency is USD`, async () => {
+			await api.put( 'settings/general/woocommerce_currency', {
+				value: 'USD',
+			} );
 		} );
-		// add products
-		await api
-			.post( 'products', {
+
+		await test.step( `Create test products.`, async () => {
+			const payload_product1 = {
 				name: firstProductName,
 				type: 'simple',
 				regular_price: firstProductPrice,
-			} )
-			.then( ( response ) => {
-				firstProductId = response.data.id;
-			} );
-		await api
-			.post( 'products', {
+			};
+			const payload_product2 = {
 				name: secondProductName,
 				type: 'simple',
 				regular_price: secondProductPrice,
-			} )
-			.then( ( response ) => {
-				secondProductId = response.data.id;
+			};
+
+			const response = await api.post( 'products/batch', {
+				create: [ payload_product1, payload_product2 ],
 			} );
-		// create shipping zones
-		await api
-			.post( 'shipping/zones', {
-				name: shippingZoneNameDE,
-			} )
-			.then( ( response ) => {
-				shippingZoneDEId = response.data.id;
+
+			const createdProducts = response.data.create;
+			firstProductId = createdProducts.find(
+				( { name } ) => name === firstProductName
+			).id;
+			secondProductId = createdProducts.find(
+				( { name } ) => name === secondProductName
+			).id;
+		} );
+
+		await test.step( `Create shipping zones`, async () => {
+			await api
+				.post( 'shipping/zones', {
+					name: shippingZoneNameDE,
+				} )
+				.then( ( response ) => {
+					shippingZoneDEId = response.data.id;
+				} );
+			await api
+				.post( 'shipping/zones', {
+					name: shippingZoneNameFR,
+				} )
+				.then( ( response ) => {
+					shippingZoneFRId = response.data.id;
+				} );
+		} );
+
+		await test.step( `Set shipping zone locations`, async () => {
+			await api.put( `shipping/zones/${ shippingZoneDEId }/locations`, [
+				{
+					code: shippingCountryDE,
+				},
+			] );
+			await api.put( `shipping/zones/${ shippingZoneFRId }/locations`, [
+				{
+					code: shippingCountryFR,
+				},
+			] );
+		} );
+
+		await test.step( `set shipping zone methods`, async () => {
+			await api.post( `shipping/zones/${ shippingZoneDEId }/methods`, {
+				method_id: 'free_shipping',
 			} );
-		await api
-			.post( 'shipping/zones', {
-				name: shippingZoneNameFR,
-			} )
-			.then( ( response ) => {
-				shippingZoneFRId = response.data.id;
+			await api.post( `shipping/zones/${ shippingZoneFRId }/methods`, {
+				method_id: 'flat_rate',
+				settings: {
+					cost: '5.00',
+				},
 			} );
-		// set shipping zone locations
-		await api.put( `shipping/zones/${ shippingZoneDEId }/locations`, [
-			{
-				code: shippingCountryDE,
-			},
-		] );
-		await api.put( `shipping/zones/${ shippingZoneFRId }/locations`, [
-			{
-				code: shippingCountryFR,
-			},
-		] );
-		// set shipping zone methods
-		await api.post( `shipping/zones/${ shippingZoneDEId }/methods`, {
-			method_id: 'free_shipping',
+			await api.post( `shipping/zones/${ shippingZoneFRId }/methods`, {
+				method_id: 'local_pickup',
+			} );
 		} );
-		await api.post( `shipping/zones/${ shippingZoneFRId }/methods`, {
-			method_id: 'flat_rate',
-			settings: {
-				cost: '5.00',
-			},
-		} );
-		await api.post( `shipping/zones/${ shippingZoneFRId }/methods`, {
-			method_id: 'local_pickup',
-		} );
-		// confirm that we allow shipping to any country
-		await api.put( 'settings/general/woocommerce_allowed_countries', {
-			value: 'all',
+
+		await test.step( `Confirm that we allow shipping to any country`, async () => {
+			await api.put( 'settings/general/woocommerce_allowed_countries', {
+				value: 'all',
+			} );
 		} );
 	} );
 
 	test.beforeEach( async ( { page, context } ) => {
-		// Shopping cart is very sensitive to cookies, so be explicit
-		await context.clearCookies();
+		await test.step( `Explicilty clear cookies.`, async () => {
+			await context.clearCookies();
+		} );
 
-		// all tests use the first product
-		await page.goto( `/shop/?add-to-cart=${ firstProductId }` );
-		await page.waitForLoadState( 'networkidle' );
+		await test.step( `As a shopper, add first product to cart.`, async () => {
+			await page.goto( `/shop/?add-to-cart=${ firstProductId }` );
+			await page.waitForLoadState( 'networkidle' );
+		} );
 	} );
 
 	test.afterAll( async ( { baseURL } ) => {
@@ -110,24 +143,28 @@ test.describe( 'Cart Calculate Shipping', () => {
 			consumerSecret: process.env.CONSUMER_SECRET,
 			version: 'wc/v3',
 		} );
-		await api.delete( `products/${ firstProductId }`, {
-			force: true,
+
+		await test.step( `Batch delete test products.`, async () => {
+			await api.post( 'products/batch', {
+				delete: [ firstProductId, secondProductId ],
+			} );
 		} );
-		await api.delete( `products/${ secondProductId }`, {
-			force: true,
-		} );
-		await api.delete( `shipping/zones/${ shippingZoneDEId }`, {
-			force: true,
-		} );
-		await api.delete( `shipping/zones/${ shippingZoneFRId }`, {
-			force: true,
+
+		await test.step( `Delete test shipping zones.`, async () => {
+			await api.delete( `shipping/zones/${ shippingZoneDEId }`, {
+				force: true,
+			} );
+			await api.delete( `shipping/zones/${ shippingZoneFRId }`, {
+				force: true,
+			} );
 		} );
 	} );
 
 	test( 'allows customer to calculate Free Shipping if in Germany', async ( {
 		page,
 	} ) => {
-		await page.goto( '/cart/' );
+		await steps.gotoCart( page );
+
 		// Set shipping country to Germany
 		await page.locator( 'a.shipping-calculator-button' ).click();
 		await page
