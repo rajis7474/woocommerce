@@ -236,9 +236,6 @@ test.describe( 'A Liberian store can complete the selective bundle install but d
 		await test.step( `Complete business details section`, async () => {
 			await onboarding.completeBusinessDetailsSection( page );
 			await page.locator( 'button >> text=Continue' ).click();
-			await onboarding.unselectBusinessFeatures( page, expect_wp_pay );
-
-			await page.locator( 'button >> text=Continue' ).click();
 		} );
 
 		await test.step( `Unselect business features`, async () => {
