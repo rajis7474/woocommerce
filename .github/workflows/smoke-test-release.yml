@@ -84,6 +84,7 @@ jobs:
               uses: ./.github/actions/setup-woocommerce-monorepo
               with:
                   build-filters: woocommerce
+                  php-version: ${{ matrix.php_version }}
 
             - name: Launch WP Env
               working-directory: plugins/woocommerce
