@@ -1,0 +1,4 @@
+Significance: patch
+Type: dev
+
+Fix failing wp-env jobs in CI for PHP versions 8.1 and higher.
